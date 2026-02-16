@@ -2,15 +2,20 @@ import argparse
 import sqlite3
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from sklearn.metrics import log_loss
+from sklearn.preprocessing import StandardScaler
+
+from src.Utils.Model_Metrics import expected_calibration_error, multiclass_brier_score
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATASET_DB = BASE_DIR / "Data" / "dataset.sqlite"
 MODEL_DIR = BASE_DIR / "Models"
 
-DEFAULT_DATASET = "dataset_2012-24_new"
+DEFAULT_DATASET = "dataset_2012-26"
 TARGET_COLUMN = "OU-Cover"
 DATE_COLUMN = "Date"
 DROP_COLUMNS = [
@@ -45,7 +50,6 @@ def prepare_data(df):
     X = X.replace([np.inf, -np.inf], np.nan)
     X = X.fillna(X.median(numeric_only=True)).fillna(0)
     X = X.to_numpy(dtype=float)
-    X = tf.keras.utils.normalize(X, axis=1)
     return X, y
 
 
@@ -122,6 +126,11 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = split_time_series(
         X, y, val_size=args.val_size, test_size=args.test_size
     )
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_val = scaler.transform(X_val)
+    X_test = scaler.transform(X_test)
+
     rng = np.random.default_rng(args.seed)
     best = {"val_loss": float("inf"), "params": None}
     temp_path = MODEL_DIR / "best_uo_temp.keras"
@@ -169,10 +178,19 @@ def main():
         loss="sparse_categorical_crossentropy",
         metrics=["accuracy"],
     )
-    loss, accuracy = best_model.evaluate(X_test, y_test, verbose=0)
+    probabilities = best_model.predict(X_test, verbose=0)
+    y_pred = np.argmax(probabilities, axis=1)
+
+    loss = log_loss(y_test, probabilities, labels=[0, 1, 2])
+    accuracy = float(np.mean(y_pred == y_test))
+    brier = multiclass_brier_score(y_test, probabilities, num_classes=NUM_CLASSES)
+    ece = expected_calibration_error(y_test, probabilities)
+
     print(f"Best val loss: {best['val_loss']:.4f}")
     print(f"Test accuracy: {accuracy:.4f}")
     print(f"Test loss: {loss:.4f}")
+    print(f"Test brier score: {brier:.4f}")
+    print(f"Test ECE: {ece:.4f}")
 
     params = best["params"]
     model_name = (
@@ -187,8 +205,11 @@ def main():
     )
     model_path = MODEL_DIR / model_name
     best_model.save(model_path)
+    scaler_path = MODEL_DIR / f"{model_path.stem}_scaler.pkl"
+    joblib.dump(scaler, scaler_path)
     temp_path.unlink(missing_ok=True)
     print(f"Saved model: {model_path}")
+    print(f"Saved scaler: {scaler_path}")
 
 
 if __name__ == "__main__":

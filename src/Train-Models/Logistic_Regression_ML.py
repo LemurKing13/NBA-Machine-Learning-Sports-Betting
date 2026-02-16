@@ -11,10 +11,12 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from src.Utils.Model_Metrics import expected_calibration_error, multiclass_brier_score
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATASET_DB = BASE_DIR / "Data" / "dataset.sqlite"
 
-DEFAULT_DATASET = "dataset_2012-26_new"
+DEFAULT_DATASET = "dataset_2012-26"
 TARGET_COLUMN = "Home-Team-Win"
 DATE_COLUMN = "Date"
 DROP_COLUMNS = [
@@ -162,10 +164,14 @@ def main():
     y_proba = calibrated.predict_proba(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     loss = log_loss(y_test, y_proba)
+    brier = multiclass_brier_score(y_test, y_proba, num_classes=2)
+    ece = expected_calibration_error(y_test, y_proba)
 
     print(f"Best val log loss: {best['val_loss']:.4f}")
     print(f"Test accuracy: {accuracy:.4f}")
     print(f"Test log loss: {loss:.4f}")
+    print(f"Test brier score: {brier:.4f}")
+    print(f"Test ECE: {ece:.4f}")
     print("Classification report:")
     print(classification_report(y_test, y_pred))
 

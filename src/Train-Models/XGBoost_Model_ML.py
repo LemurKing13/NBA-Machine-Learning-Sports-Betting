@@ -10,6 +10,8 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import accuracy_score, log_loss
 from sklearn.model_selection import TimeSeriesSplit
 
+from src.Utils.Model_Metrics import expected_calibration_error, multiclass_brier_score
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATASET_DB = BASE_DIR / "Data" / "dataset.sqlite"
 MODEL_DIR = BASE_DIR / "Models" / "XGBoost_Models"
@@ -214,10 +216,14 @@ def main():
     y_pred = np.argmax(probabilities, axis=1)
     accuracy = accuracy_score(y_test, y_pred)
     test_loss = log_loss(y_test, probabilities, labels=list(range(NUM_CLASSES)))
+    brier = multiclass_brier_score(y_test, probabilities, num_classes=NUM_CLASSES)
+    ece = expected_calibration_error(y_test, probabilities)
 
     print(f"Best val log loss: {best['val_loss']:.4f}")
     print(f"Test accuracy: {accuracy:.4f}")
     print(f"Test log loss: {test_loss:.4f}")
+    print(f"Test brier score: {brier:.4f}")
+    print(f"Test ECE: {ece:.4f}")
 
     params = best["params"]
     model_name = (

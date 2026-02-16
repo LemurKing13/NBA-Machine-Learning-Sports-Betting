@@ -62,16 +62,16 @@ python -m Create_Games
 cd ../Train-Models
 python -m XGBoost_Model_ML --dataset dataset_2012-26 --trials 100 --splits 5 --calibration sigmoid
 python -m XGBoost_Model_UO --dataset dataset_2012-26 --trials 100 --splits 5 --calibration sigmoid
-python -m NN_Model_ML
-python -m NN_Model_UO
-python -m Logistic_Regression_ML --dataset dataset_2012-26_new --trials 50 --splits 5 --calibration sigmoid
-python -m Logistic_Regression_UO --dataset dataset_2012-26_new --trials 50 --splits 5 --calibration sigmoid
+python -m NN_Model_ML --dataset dataset_2012-26
+python -m NN_Model_UO --dataset dataset_2012-26
+python -m Logistic_Regression_ML --dataset dataset_2012-26 --trials 50 --splits 5 --calibration sigmoid
+python -m Logistic_Regression_UO --dataset dataset_2012-26 --trials 50 --splits 5 --calibration sigmoid
 ```
 
 ### Neural network notes
-- The current NN training scripts are the original versions with hard-coded dataset and model paths.
-- They train on `dataset_2012-24_new` and save into `Models/` with timestamped names.
-- If you want configurable flags or feature/scaler sidecars, switch back to the newer NN scripts.
+- NN scripts now default to `dataset_2012-26` for consistency with XGBoost and Logistic Regression.
+- NN scripts standardize features using a train-only `StandardScaler` and save a scaler sidecar (`*_scaler.pkl`) next to the model.
+- Training/eval output now includes calibration-focused metrics: log loss, Brier score, and ECE.
 
 ### Backfilling missing data
 Get_Data normally fetches only new dates in the current season. To fill missing dates:
